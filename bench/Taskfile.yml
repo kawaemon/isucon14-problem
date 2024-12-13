@@ -10,12 +10,12 @@ tasks:
   build-linux-amd64:
     cmds:
       - GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o ./bin/bench_linux_amd64
+  build-image:
+    cmds:
+      - docker build -t isucon14-benchmarker .
   test:
     cmds:
       - go test ./...
-  image-build:
-    cmds:
-      - ko build -L .
   gen:
     cmds:
       - go generate ./...
