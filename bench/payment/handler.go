@@ -69,17 +69,23 @@ func (s *Server) PostPaymentsHandler(w http.ResponseWriter, r *http.Request) {
 
 	time.Sleep(s.processTime)
 	// (直近3秒で処理された payment の数) / 100 の確率で処理を失敗させる(最大50%)
-	var recentProcessedCount int
+	recentProcessedCount := 0
+	now := time.Now()
 	for _, processed := range s.processedPayments.BackwardIter() {
-		if time.Since(processed.processedAt) > 3*time.Second {
+		if now.Sub(processed.processedAt) > 3*time.Second {
 			break
 		}
 		recentProcessedCount++
+		if recentProcessedCount > 50 {
+			break
+		}
 	}
+
 	failurePercentage := recentProcessedCount
 	if failurePercentage > 50 {
 		failurePercentage = 50
 	}
+
 	retryCount, _ := s.retryCounts.GetOrSetDefault(token, func() int { return -1 })
 	s.retryCounts.Set(token, retryCount+1)
 	if rand.IntN(100) > failurePercentage || retryCount >= 4 {
