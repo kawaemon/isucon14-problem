@@ -1,13 +1,14 @@
 package payment
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/isucon/isucon14/bench/internal/json"
 )
 
 type PostPaymentRequest struct {

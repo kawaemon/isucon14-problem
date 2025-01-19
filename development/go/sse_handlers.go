@@ -2,11 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/isucon/isucon14/bench/internal/json"
 )
 
 func writeSSE(w http.ResponseWriter, data interface{}) error {

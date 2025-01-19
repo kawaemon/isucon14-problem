@@ -4,9 +4,10 @@ import (
 	"crypto/md5"
 	_ "embed"
 	"encoding/hex"
-	"encoding/json"
 	"io"
 	"slices"
+
+	"github.com/isucon/isucon14/bench/internal/json"
 
 	"github.com/samber/lo"
 )
@@ -43,9 +44,9 @@ var FRONTEND_PATH_SCENARIOS = map[FrontendPathScenario][]string{
 	FRONTEND_PATH_SCENARIO_CLIENT_REGISTER_1: {"/client"},
 	// /clientにハードナビゲーションして、
 	// /client/historyにソフトナビゲーションしたとき
-	FRONTEND_PATH_SCENARIO_CLIENT_REGISTER_2: {"/client", "/client/register"},
-	FRONTEND_PATH_SCENARIO_CLIENT_REGISTER_3: {"/client", "/client/register", "/client/register-payment"},
-	FRONTEND_PATH_SCENARIO_CLIENT_EVALUATION: {"/client"},
+	FRONTEND_PATH_SCENARIO_CLIENT_REGISTER_2:      {"/client", "/client/register"},
+	FRONTEND_PATH_SCENARIO_CLIENT_REGISTER_3:      {"/client", "/client/register", "/client/register-payment"},
+	FRONTEND_PATH_SCENARIO_CLIENT_EVALUATION:      {"/client"},
 	FRONTEND_PATH_SCENARIO_CLIENT_CHECK_HISTORY_1: {"/client"},
 	FRONTEND_PATH_SCENARIO_CLIENT_CHECK_HISTORY_2: {"/client", "/client/history"},
 

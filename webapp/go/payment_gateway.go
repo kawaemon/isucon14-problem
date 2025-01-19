@@ -3,11 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/isucon/isucon14/bench/internal/json"
 )
 
 var erroredUpstream = errors.New("errored upstream")

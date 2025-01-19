@@ -2,12 +2,13 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/isucon/isucon14/bench/internal/json"
 )
 
 type Portal struct {

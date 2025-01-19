@@ -3,11 +3,12 @@ package webapp
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"github.com/isucon/isucon14/bench/internal/json"
 
 	"github.com/isucon/isucon14/bench/benchmarker/webapp/api"
 )

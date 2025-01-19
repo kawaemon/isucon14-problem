@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/isucon/isucandar"
@@ -53,6 +54,16 @@ var runCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cpuf, err := os.Create("./cpuprofile")
+		if err != nil {
+			panic(fmt.Sprintf("failed to create ./cpuprofile: %v", err))
+		}
+		defer cpuf.Close()
+		if err := pprof.StartCPUProfile(cpuf); err != nil {
+			panic("failed to start cpu profiling")
+		}
+		defer pprof.StopCPUProfile()
+
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 			AddSource: true,
 			Level:     slog.LevelDebug,

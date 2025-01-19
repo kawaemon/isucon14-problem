@@ -1,12 +1,13 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/isucon/isucon14/bench/internal/json"
 )
 
 var (
