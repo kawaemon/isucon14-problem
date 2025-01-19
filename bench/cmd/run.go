@@ -3,18 +3,15 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/isucon/isucandar"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
-
-	"net/http"
-	_ "net/http/pprof"
 
 	"github.com/isucon/isucon14/bench/benchmarker/metrics"
 	"github.com/isucon/isucon14/bench/benchmarker/scenario"
@@ -58,10 +55,16 @@ var runCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		go func() {
-			runtime.SetCPUProfileRate(1000)
-			log.Println(http.ListenAndServe("localhost:6060", nil))
-		}()
+		runtime.SetCPUProfileRate(10000)
+		cpuf, err := os.Create("./cpuprofile")
+		if err != nil {
+			panic(fmt.Sprintf("failed to create ./cpuprofile: %v", err))
+		}
+		defer cpuf.Close()
+		if err := pprof.StartCPUProfile(cpuf); err != nil {
+			panic("failed to start cpu profiling")
+		}
+		defer pprof.StopCPUProfile()
 
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 			AddSource: true,
@@ -153,10 +156,6 @@ var runCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		fmt.Println("waiting inf")
-		d := make(chan struct{})
-		a := <-d
-		fmt.Println(a)
 		return nil
 	},
 }
