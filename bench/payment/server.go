@@ -25,6 +25,8 @@ type Server struct {
 	verifier          Verifier
 	errChan           chan error
 	closed            bool
+
+	processedPaymentsByIdemKey *concurrent.SimpleMap[string, *processedPayment]
 }
 
 func NewServer(verifier Verifier, processTime time.Duration, errChan chan error) *Server {
@@ -36,6 +38,8 @@ func NewServer(verifier Verifier, processTime time.Duration, errChan chan error)
 		processTime:       processTime,
 		verifier:          verifier,
 		errChan:           errChan,
+
+		processedPaymentsByIdemKey: concurrent.NewSimpleMap[string, *processedPayment](),
 	}
 	s.mux.HandleFunc("GET /payments", s.GetPaymentsHandler)
 	s.mux.HandleFunc("POST /payments", s.PostPaymentsHandler)

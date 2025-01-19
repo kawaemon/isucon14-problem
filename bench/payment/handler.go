@@ -88,15 +88,17 @@ func (s *Server) PostPaymentsHandler(w http.ResponseWriter, r *http.Request) {
 			defer p.locked.Store(false)
 			alreadyProcessed := false
 			if !newPayment {
-				for _, processed := range s.processedPayments.ToSlice() {
-					if processed.payment.IdempotencyKey == p.IdempotencyKey {
-						alreadyProcessed = true
-						break
-					}
+				_, ok := s.processedPaymentsByIdemKey.Get(p.IdempotencyKey)
+				if ok {
+					alreadyProcessed = true
 				}
 			}
 			if !alreadyProcessed {
-				s.processedPayments.Append(&processedPayment{payment: p, processedAt: time.Now()})
+				proc := &processedPayment{payment: p, processedAt: time.Now()}
+				s.processedPayments.Append(proc)
+				if p.IdempotencyKey != "" {
+					s.processedPaymentsByIdemKey.Set(p.IdempotencyKey, proc)
+				}
 				p.Status = s.verifier.Verify(p)
 				if p.Status.Err != nil {
 					s.errChan <- p.Status.Err
