@@ -3,9 +3,10 @@ package webapp
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/goccy/go-json"
 
 	"github.com/isucon/isucon14/bench/benchmarker/webapp/api"
 )
