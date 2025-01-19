@@ -3,13 +3,18 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/isucon/isucandar"
 	"github.com/spf13/cobra"
 	"go.opentelemetry.io/otel"
+
+	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/isucon/isucon14/bench/benchmarker/metrics"
 	"github.com/isucon/isucon14/bench/benchmarker/scenario"
@@ -53,6 +58,11 @@ var runCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		go func() {
+			runtime.SetCPUProfileRate(1000)
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 			AddSource: true,
 			Level:     slog.LevelDebug,
@@ -142,6 +152,11 @@ var runCmd = &cobra.Command{
 		if failOnError && len(errors) > 0 {
 			os.Exit(1)
 		}
+
+		fmt.Println("waiting inf")
+		d := make(chan struct{})
+		a := <-d
+		fmt.Println(a)
 		return nil
 	},
 }
