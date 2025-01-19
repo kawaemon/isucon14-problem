@@ -41,6 +41,22 @@ func (s *SimpleSlice[V]) Iter() iter.Seq2[int, V] {
 	}
 }
 
+func (s *SimpleSlice[V]) Last() (value V, ok bool) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	len := len(s.s)
+
+	if len == 0 {
+		ok = false
+		return
+	}
+
+	value = s.s[len-1]
+	ok = true
+	return
+}
+
 func (s *SimpleSlice[V]) BackwardIter() iter.Seq2[int, V] {
 	return func(yield func(int, V) bool) {
 		s.lock.RLock()

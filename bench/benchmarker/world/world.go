@@ -391,13 +391,12 @@ func (w *World) checkNearbyChairsResponse(baseTime time.Time, current Coordinate
 			ok := false
 			var req *Request
 			// この時点での、この椅子に割り当てられていた最後の完了済みのライドを見る
-			for _, r := range chair.RequestHistory.BackwardIter() {
+			if r, hasLast := chair.RequestHistory.Last(); hasLast {
 				req = r
 				// baseTimeよりも3秒前以降に完了状態に遷移している場合は、含まれていなくても許容する
 				if r.ServerCompletedAt.After(baseTime.Add(-3 * time.Second)) {
 					ok = true
 				}
-				break
 			}
 			if ok {
 				continue
