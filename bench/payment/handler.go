@@ -69,11 +69,15 @@ func (s *Server) PostPaymentsHandler(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(s.processTime)
 	// (直近3秒で処理された payment の数) / 100 の確率で処理を失敗させる(最大50%)
 	var recentProcessedCount int
+	now := time.Now()
 	for _, processed := range s.processedPayments.BackwardIter() {
-		if time.Since(processed.processedAt) > 3*time.Second {
+		if now.Sub(processed.processedAt) > 3*time.Second {
 			break
 		}
 		recentProcessedCount++
+		if recentProcessedCount > 50 {
+			break
+		}
 	}
 	failurePercentage := recentProcessedCount
 	if failurePercentage > 50 {
@@ -86,16 +90,14 @@ func (s *Server) PostPaymentsHandler(w http.ResponseWriter, r *http.Request) {
 		if p.locked.CompareAndSwap(false, true) {
 			defer p.locked.Store(false)
 			alreadyProcessed := false
-			if !newPayment {
-				for _, processed := range s.processedPayments.ToSlice() {
-					if processed.payment.IdempotencyKey == p.IdempotencyKey {
-						alreadyProcessed = true
-						break
-					}
-				}
+			if !newPayment && len(p.IdempotencyKey) > 0 {
+				alreadyProcessed = s.processedPaymentsByIdemKey.Has(p.IdempotencyKey)
 			}
 			if !alreadyProcessed {
 				s.processedPayments.Append(&processedPayment{payment: p, processedAt: time.Now()})
+				if len(p.IdempotencyKey) > 0 {
+					s.processedPaymentsByIdemKey.Add(p.IdempotencyKey)
+				}
 				p.Status = s.verifier.Verify(p)
 				if p.Status.Err != nil {
 					s.errChan <- p.Status.Err
