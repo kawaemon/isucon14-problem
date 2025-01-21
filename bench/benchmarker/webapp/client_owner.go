@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/goccy/go-json"
+	"github.com/isucon/isucon14/bench/internal/json"
 
 	"github.com/isucon/isucon14/bench/benchmarker/webapp/api"
 )

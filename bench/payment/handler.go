@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/goccy/go-json"
+	"github.com/isucon/isucon14/bench/internal/json"
 )
 
 type PostPaymentRequest struct {

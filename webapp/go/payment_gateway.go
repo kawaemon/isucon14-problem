@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/goccy/go-json"
+	"github.com/isucon/isucon14/bench/internal/json"
 )
 
 var erroredUpstream = errors.New("errored upstream")
