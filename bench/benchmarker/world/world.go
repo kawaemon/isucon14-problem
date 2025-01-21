@@ -343,15 +343,13 @@ func (w *World) checkNearbyChairsResponse(baseTime time.Time, current Coordinate
 		if current.DistanceTo(chair.Coordinate) > distance {
 			return fmt.Errorf("ID:%sの椅子は指定の範囲内にありません", chair.ID)
 		}
-		for _, req := range c.RequestHistory.BackwardIter() {
-			if req.BenchRequestAcceptTime.After(baseTime.Add(-3 * time.Second)) {
-				// nearbychairsのリクエストを送った3秒前以降にマッチされている場合は許容する
-				break
+		if req, ok := c.RequestHistory.Last(); ok {
+			// nearbychairsのリクエストを送った3秒前以降にマッチされている場合は許容する
+			if !req.BenchRequestAcceptTime.After(baseTime.Add(-3 * time.Second)) {
+				if !req.Evaluated.Load() {
+					return fmt.Errorf("ID:%sの椅子は既にライド中です", chair.ID)
+				}
 			}
-			if !req.Evaluated.Load() {
-				return fmt.Errorf("ID:%sの椅子は既にライド中です", chair.ID)
-			}
-			break
 		}
 		if !c.Location.Current().Equals(chair.Coordinate) {
 			// 最新の座標ではないなら過去を遡る
