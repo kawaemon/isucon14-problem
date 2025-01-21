@@ -21,10 +21,10 @@ func TestChair_moveRandom(t *testing.T) {
 		Model:  &ChairModel{Speed: 13},
 		Rand:   rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 	}
-	c.Location.PlaceTo(&LocationEntry{Coord: C(0, 0)})
+	c.Location.PlaceTo(LocationEntry{Coord: C(0, 0)})
 	for i := range int64(1000) {
 		prev := c.Location.Current()
-		c.Location.MoveTo(&LocationEntry{Coord: c.moveRandom(), Time: i})
+		c.Location.MoveTo(LocationEntry{Coord: c.moveRandom(), Time: i})
 		assert.Equal(t, c.Model.Speed, prev.DistanceTo(c.Location.Current()), "ランダムに動く量は常にSpeedと一致しなければならない")
 		assert.True(t, c.Location.Current().Within(region), "ランダムに動く範囲はリージョン内に収まっている")
 	}
@@ -110,12 +110,12 @@ func TestChair_moveToward(t *testing.T) {
 			t.Logf("distance: %d, expected ticks: %d", distance, expectedTick)
 
 			for range 100 {
-				tt.chair.Location.PlaceTo(&LocationEntry{Coord: tt.chair.Location.Initial, Time: -1})
+				tt.chair.Location.PlaceTo(LocationEntry{Coord: tt.chair.Location.Initial, Time: -1})
 				for tick := range int64(expectedTick) {
 					prev := tt.chair.Location.Current()
 					require.NotEqual(t, tt.dest, prev, "必要なループ数より前に到着している")
 
-					tt.chair.Location.MoveTo(&LocationEntry{
+					tt.chair.Location.MoveTo(LocationEntry{
 						Coord: tt.chair.moveToward(tt.dest),
 						Time:  tick,
 					})

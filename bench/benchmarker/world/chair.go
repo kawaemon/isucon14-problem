@@ -146,21 +146,21 @@ func (c *Chair) Tick(ctx *Context) error {
 				// 迂回する予定でまだ迂回してない場合
 				if c.Location.Current().Equals(c.detourPoint) {
 					// 迂回ポイントに着いた次の移動は配車位置から離れる方向に行う
-					c.Location.MoveTo(&LocationEntry{
+					c.Location.MoveTo(LocationEntry{
 						Coord: c.moveOppositeTo(c.Request.PickupPoint),
 						Time:  time,
 					})
 					c.detoured = true
 				} else {
 					// 迂回ポイントに向かう
-					c.Location.MoveTo(&LocationEntry{
+					c.Location.MoveTo(LocationEntry{
 						Coord: c.moveToward(c.detourPoint),
 						Time:  time,
 					})
 				}
 			} else {
 				// 配車位置に向かう
-				c.Location.MoveTo(&LocationEntry{
+				c.Location.MoveTo(LocationEntry{
 					Coord: c.moveToward(c.Request.PickupPoint),
 					Time:  time,
 				})
@@ -199,21 +199,21 @@ func (c *Chair) Tick(ctx *Context) error {
 				// 迂回する予定でまだ迂回してない場合
 				if c.Location.Current().Equals(c.detourPoint) {
 					// 迂回ポイントに着いた次の移動は目的地から離れる方向に行う
-					c.Location.MoveTo(&LocationEntry{
+					c.Location.MoveTo(LocationEntry{
 						Coord: c.moveOppositeTo(c.Request.DestinationPoint),
 						Time:  time,
 					})
 					c.detoured = true
 				} else {
 					// 迂回ポイントに向かう
-					c.Location.MoveTo(&LocationEntry{
+					c.Location.MoveTo(LocationEntry{
 						Coord: c.moveToward(c.detourPoint),
 						Time:  time,
 					})
 				}
 			} else {
 				// 目的地に向かう
-				c.Location.MoveTo(&LocationEntry{
+				c.Location.MoveTo(LocationEntry{
 					Coord: c.moveToward(c.Request.DestinationPoint),
 					Time:  time,
 				})
@@ -297,7 +297,7 @@ func (c *Chair) Tick(ctx *Context) error {
 		defer func() { c.ActivatedAt = time.Now() }()
 
 		// 出勤
-		c.Location.PlaceTo(&LocationEntry{
+		c.Location.PlaceTo(LocationEntry{
 			Coord: c.Location.Initial,
 			Time:  ctx.CurrentTime(),
 		})

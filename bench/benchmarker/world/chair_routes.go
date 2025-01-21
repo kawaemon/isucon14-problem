@@ -12,12 +12,21 @@ type ChairLocation struct {
 	// Initial 初期位置
 	Initial Coordinate
 
-	current             *LocationEntry
-	history             []*LocationEntry
+	history             []LocationEntry
 	totalTravelDistance int
 	dirty               bool
 
 	mu sync.RWMutex
+}
+
+func last[T any](s []T) (data T, have bool) {
+	if len(s) == 0 {
+		have = false
+		return
+	}
+	have = true
+	data = s[len(s)-1]
+	return
 }
 
 type LocationEntry struct {
@@ -29,16 +38,20 @@ type LocationEntry struct {
 func (r *ChairLocation) Current() Coordinate {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	if r.current == nil {
+
+	current, ok := last(r.history)
+	if !ok {
 		return r.Initial
 	}
-	return r.current.Coord
+
+	return current.Coord
 }
 
 func (r *ChairLocation) LastMovedAt() (time.Time, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	if r.current == nil {
+
+	if len(r.history) == 0 {
 		return time.Time{}, false
 	}
 	for _, entry := range slices.Backward(r.history) {
@@ -87,28 +100,37 @@ func (r *ChairLocation) Dirty() bool {
 }
 
 // PlaceTo 椅子をlocationに配置する。前回の位置との距離差を総移動距離には加算しない
-func (r *ChairLocation) PlaceTo(location *LocationEntry) {
+func (r *ChairLocation) PlaceTo(location LocationEntry) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.history = append(r.history, location)
-	r.current = location
 	r.dirty = true
 }
 
 // MoveTo 椅子をlocationに移動させ、総移動距離を加算する
-func (r *ChairLocation) MoveTo(location *LocationEntry) {
+func (r *ChairLocation) MoveTo(location LocationEntry) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	current, ok := last(r.history)
+	if !ok {
+		panic("tried to *current, which is nil")
+	}
+
 	r.history = append(r.history, location)
-	r.totalTravelDistance += r.current.Coord.DistanceTo(location.Coord)
-	r.current = location
+	r.totalTravelDistance += current.Coord.DistanceTo(location.Coord)
 	r.dirty = true
 }
 
 func (r *ChairLocation) SetServerTime(serverTime time.Time) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.current.ServerTime = null.TimeFrom(serverTime)
+
+	if len(r.history) == 0 {
+		panic("tried to *current, which is nil")
+	}
+
+	r.history[len(r.history)-1].ServerTime = null.TimeFrom(serverTime)
 }
 
 type GetPeriodsByCoordResultEntry struct {
@@ -153,14 +175,14 @@ func (r *ChairLocation) GetCoordByTime(t time.Time) Coordinate {
 	return r.Initial
 }
 
-func (r *ChairLocation) GetLocationEntryByTime(t time.Time) *LocationEntry {
+func (r *ChairLocation) GetLocationEntryByTime(t time.Time) (LocationEntry, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	for _, entry := range slices.Backward(r.history) {
 		if entry.ServerTime.Valid && !entry.ServerTime.Time.After(t) {
-			return entry
+			return entry, true
 		}
 	}
-	return nil
+	return LocationEntry{}, false
 }
