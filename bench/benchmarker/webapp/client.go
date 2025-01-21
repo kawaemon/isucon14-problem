@@ -36,14 +36,14 @@ var local = roundRobin[net.IP]{
 	ips: []net.IP{
 		// "192.168.0.101",
 		net.ParseIP("192.168.0.102"),
-		net.ParseIP("192.168.0.103"),
-		net.ParseIP("192.168.0.104"),
-		net.ParseIP("192.168.0.105"),
-		net.ParseIP("192.168.0.106"),
-		net.ParseIP("192.168.0.107"),
-		net.ParseIP("192.168.0.108"),
-		net.ParseIP("192.168.0.109"),
-		net.ParseIP("192.168.0.110"),
+		// net.ParseIP("192.168.0.103"),
+		// net.ParseIP("192.168.0.104"),
+		// net.ParseIP("192.168.0.105"),
+		// net.ParseIP("192.168.0.106"),
+		// net.ParseIP("192.168.0.107"),
+		// net.ParseIP("192.168.0.108"),
+		// net.ParseIP("192.168.0.109"),
+		// net.ParseIP("192.168.0.110"),
 	},
 	counter: 0,
 }
@@ -51,9 +51,9 @@ var local = roundRobin[net.IP]{
 var dest = roundRobin[string]{
 	ips: []string{
 		"192.168.0.249:8080",
-		"192.168.0.250:8080",
-		"192.168.0.251:8080",
-		"192.168.0.252:8080",
+		// "192.168.0.250:8080",
+		// "192.168.0.251:8080",
+		// "192.168.0.252:8080",
 	},
 	counter: 0,
 }
