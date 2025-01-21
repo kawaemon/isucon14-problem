@@ -8,6 +8,7 @@ import (
 	"iter"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/isucon/isucon14/bench/internal/json"
@@ -153,14 +154,20 @@ type ChairNotificationData struct {
 	Status                api.RideStatus `json:"status"`
 }
 
-func (c *Client) ChairGetNotification(ctx context.Context) iter.Seq2[*ChairGetNotificationOK, error] {
+func (c *Client) ChairGetNotification(ctx context.Context) iter.Seq2[ChairGetNotificationOK, error] {
 	return c.chairGetNotification(ctx, false)
 }
 
-func (c *Client) chairGetNotification(ctx context.Context, nested bool) iter.Seq2[*ChairGetNotificationOK, error] {
+var chairNotificationPool = sync.Pool{
+	New: func() any {
+		return new(ChairGetNotificationOK)
+	},
+}
+
+func (c *Client) chairGetNotification(ctx context.Context, nested bool) iter.Seq2[ChairGetNotificationOK, error] {
 	req, err := c.agent.NewRequest(http.MethodGet, "/api/chair/notification", nil)
 	if err != nil {
-		return func(yield func(*ChairGetNotificationOK, error) bool) { yield(nil, err) }
+		return func(yield func(ChairGetNotificationOK, error) bool) { yield(ChairGetNotificationOK{}, err) }
 	}
 
 	for _, modifier := range c.requestModifiers {
@@ -176,22 +183,25 @@ func (c *Client) chairGetNotification(ctx context.Context, nested bool) iter.Seq
 
 	resp, err := httpClient.Do(req.WithContext(ctx))
 	if err != nil {
-		return func(yield func(*ChairGetNotificationOK, error) bool) {
-			yield(nil, fmt.Errorf("GET /api/chair/notificationのリクエストが失敗しました: %w", err))
+		return func(yield func(ChairGetNotificationOK, error) bool) {
+			yield(ChairGetNotificationOK{}, fmt.Errorf("GET /api/chair/notificationのリクエストが失敗しました: %w", err))
 		}
 	}
 
 	if strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {
-		return func(yield func(*ChairGetNotificationOK, error) bool) {
+		return func(yield func(ChairGetNotificationOK, error) bool) {
 			defer closeBody(resp)
-
 			scanner := bufio.NewScanner(resp.Body)
 			for scanner.Scan() {
-				request := &ChairGetNotificationOK{}
 				line := scanner.Text()
 				if strings.HasPrefix(line, "data:") {
+					request := chairNotificationPool.Get().(*ChairGetNotificationOK)
+
 					err := json.Unmarshal([]byte(line[5:]), &request.Data)
-					if !yield(request, err) {
+					res := *request
+					chairNotificationPool.Put(request)
+
+					if !yield(res, err) {
 						return
 					}
 				}
@@ -200,9 +210,9 @@ func (c *Client) chairGetNotification(ctx context.Context, nested bool) iter.Seq
 	}
 
 	defer closeBody(resp)
-	request := &ChairGetNotificationOK{}
+	request := ChairGetNotificationOK{}
 	if resp.StatusCode == http.StatusOK {
-		if err = json.NewDecoder(resp.Body).Decode(request); err != nil {
+		if err = json.NewDecoder(resp.Body).Decode(&request); err != nil {
 			err = fmt.Errorf("GET /api/chair/notificationのJSONのdecodeに失敗しました: %w", err)
 		}
 	} else {
@@ -210,9 +220,9 @@ func (c *Client) chairGetNotification(ctx context.Context, nested bool) iter.Seq
 	}
 
 	if nested {
-		return func(yield func(*ChairGetNotificationOK, error) bool) { yield(request, err) }
+		return func(yield func(ChairGetNotificationOK, error) bool) { yield(ChairGetNotificationOK{}, err) }
 	} else {
-		return func(yield func(*ChairGetNotificationOK, error) bool) {
+		return func(yield func(ChairGetNotificationOK, error) bool) {
 			if !yield(request, err) {
 				return
 			}
@@ -231,7 +241,7 @@ func (c *Client) chairGetNotification(ctx context.Context, nested bool) iter.Seq
 						if !yield(notification, err) {
 							return
 						}
-						if notification != nil && notification.RetryAfterMs.Valid {
+						if err == nil && notification.RetryAfterMs.Valid {
 							waitTime = time.Duration(notification.RetryAfterMs.Int64) * time.Millisecond
 						} else {
 							waitTime = defaultWaitTime

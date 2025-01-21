@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/isucon/isucon14/bench/internal/json"
@@ -223,14 +224,20 @@ type UserNotificationData struct {
 	UpdatedAt             int64                            `json:"updated_at"`
 }
 
-func (c *Client) AppGetNotification(ctx context.Context) iter.Seq2[*AppGetNotificationOK, error] {
+func (c *Client) AppGetNotification(ctx context.Context) iter.Seq2[AppGetNotificationOK, error] {
 	return c.appGetNotification(ctx, false)
 }
 
-func (c *Client) appGetNotification(ctx context.Context, nested bool) iter.Seq2[*AppGetNotificationOK, error] {
+var appNotificationPool = sync.Pool{
+	New: func() any {
+		return new(AppGetNotificationOK)
+	},
+}
+
+func (c *Client) appGetNotification(ctx context.Context, nested bool) iter.Seq2[AppGetNotificationOK, error] {
 	req, err := c.agent.NewRequest(http.MethodGet, "/api/app/notification", nil)
 	if err != nil {
-		return func(yield func(*AppGetNotificationOK, error) bool) { yield(nil, err) }
+		return func(yield func(AppGetNotificationOK, error) bool) { yield(AppGetNotificationOK{}, err) }
 	}
 
 	for _, modifier := range c.requestModifiers {
@@ -246,22 +253,26 @@ func (c *Client) appGetNotification(ctx context.Context, nested bool) iter.Seq2[
 
 	resp, err := httpClient.Do(req.WithContext(ctx))
 	if err != nil {
-		return func(yield func(*AppGetNotificationOK, error) bool) {
-			yield(nil, fmt.Errorf("GET /api/app/notificationsのリクエストが失敗しました: %w", err))
+		return func(yield func(AppGetNotificationOK, error) bool) {
+			yield(AppGetNotificationOK{}, fmt.Errorf("GET /api/app/notificationsのリクエストが失敗しました: %w", err))
 		}
 	}
 
 	if strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {
-		return func(yield func(*AppGetNotificationOK, error) bool) {
+		return func(yield func(AppGetNotificationOK, error) bool) {
 			defer closeBody(resp)
 
 			scanner := bufio.NewScanner(resp.Body)
 			for scanner.Scan() {
-				request := &AppGetNotificationOK{}
 				line := scanner.Text()
 				if strings.HasPrefix(line, "data:") {
+					request := appNotificationPool.Get().(*AppGetNotificationOK)
+
 					err := json.Unmarshal([]byte(line[5:]), &request.Data)
-					if !yield(request, err) {
+					res := *request
+					appNotificationPool.Put(request)
+
+					if !yield(res, err) {
 						return
 					}
 				}
@@ -270,9 +281,9 @@ func (c *Client) appGetNotification(ctx context.Context, nested bool) iter.Seq2[
 	}
 
 	defer closeBody(resp)
-	request := &AppGetNotificationOK{}
+	request := AppGetNotificationOK{}
 	if resp.StatusCode == http.StatusOK {
-		if err = json.NewDecoder(resp.Body).Decode(request); err != nil {
+		if err = json.NewDecoder(resp.Body).Decode(&request); err != nil {
 			err = fmt.Errorf("requestのJSONのdecodeに失敗しました: %w", err)
 		}
 	} else {
@@ -280,32 +291,32 @@ func (c *Client) appGetNotification(ctx context.Context, nested bool) iter.Seq2[
 	}
 
 	if nested {
-		return func(yield func(*AppGetNotificationOK, error) bool) { yield(request, err) }
-	} else {
-		return func(yield func(*AppGetNotificationOK, error) bool) {
-			if !yield(request, err) {
+		return func(yield func(AppGetNotificationOK, error) bool) { yield(request, err) }
+	}
+
+	return func(yield func(AppGetNotificationOK, error) bool) {
+		if !yield(request, err) {
+			return
+		}
+
+		const defaultWaitTime = 30 * time.Millisecond
+		waitTime := defaultWaitTime
+		for {
+			select {
+			// こちらから切断
+			case <-ctx.Done():
 				return
-			}
 
-			const defaultWaitTime = 30 * time.Millisecond
-			waitTime := defaultWaitTime
-			for {
-				select {
-				// こちらから切断
-				case <-ctx.Done():
-					return
-
-				default:
-					time.Sleep(waitTime)
-					for notification, err := range c.appGetNotification(ctx, true) {
-						if !yield(notification, err) {
-							return
-						}
-						if notification != nil && notification.RetryAfterMs.Valid {
-							waitTime = time.Duration(notification.RetryAfterMs.Int64) * time.Millisecond
-						} else {
-							waitTime = defaultWaitTime
-						}
+			default:
+				time.Sleep(waitTime)
+				for notification, err := range c.appGetNotification(ctx, true) {
+					if !yield(notification, err) {
+						return
+					}
+					if err == nil && notification.RetryAfterMs.Valid {
+						waitTime = time.Duration(notification.RetryAfterMs.Int64) * time.Millisecond
+					} else {
+						waitTime = defaultWaitTime
 					}
 				}
 			}
