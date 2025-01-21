@@ -3,9 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
+	"net/http"
 	"os"
-	"runtime"
 	"runtime/pprof"
 	"time"
 
@@ -55,14 +56,22 @@ var runCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		runtime.SetCPUProfileRate(10000)
-		cpuf, err := os.Create("./cpuprofile")
-		if err != nil {
-			panic(fmt.Sprintf("failed to create ./cpuprofile: %v", err))
+		if true {
+			cpuf, err := os.Create("./cpuprofile")
+			if err != nil {
+				panic(fmt.Sprintf("failed to create ./cpuprofile: %v", err))
+			}
+			defer cpuf.Close()
+			if err := pprof.StartCPUProfile(cpuf); err != nil {
+				panic("failed to start cpu profiling")
+			}
+			defer pprof.StopCPUProfile()
 		}
-		defer cpuf.Close()
-		if err := pprof.StartCPUProfile(cpuf); err != nil {
-			panic("failed to start cpu profiling")
+
+		if false {
+			go func() {
+				log.Println(http.ListenAndServe("localhost:6060", nil))
+			}()
 		}
 		defer pprof.StopCPUProfile()
 
