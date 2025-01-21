@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand/v2"
+	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -305,8 +306,11 @@ func (c *Chair) Tick(ctx *Context) error {
 	}
 
 	if c.Location.Dirty() {
+		// 毎回 reset されるので使いまわし可能
+		bo := backoffPool.Get().(*backoff.ExponentialBackOff)
+
 		// 動いた場合に自身の座標をサーバーに送信。成功するまでリトライし続ける
-		err := backoff.Retry(func() error {
+		op := func() error {
 			res, err := c.Client.SendChairCoordinate(ctx, c)
 			if err != nil {
 				err = WrapCodeError(ErrorCodeFailedToSendChairCoordinate, err)
@@ -316,12 +320,32 @@ func (c *Chair) Tick(ctx *Context) error {
 			c.Location.SetServerTime(res.RecordedAt)
 			c.Location.ResetDirtyFlag()
 			return nil
-		}, backoff.NewExponentialBackOff())
-		if err != nil {
-			return err
 		}
+
+		bo.Reset()
+		for {
+			err := op()
+			if err == nil {
+				break
+			}
+
+			delay := bo.NextBackOff()
+			if delay == backoff.Stop {
+				return err
+			}
+
+			time.Sleep(delay)
+		}
+
+		backoffPool.Put(bo)
 	}
 	return nil
+}
+
+var backoffPool = sync.Pool{
+	New: func() any {
+		return backoff.NewExponentialBackOff()
+	},
 }
 
 func (c *Chair) moveToward(target Coordinate) Coordinate {
